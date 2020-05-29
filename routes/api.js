@@ -703,4 +703,80 @@ router.post('/signupManager',function(req,res,next){
 
 });
 
+router.post('/signupManager',function(req,res,next){
+  
+  console.log(req.body);
+
+  User.findOne({ email: req.body.email}). then(manager =>{
+    if(manager) {
+      res.status(400).send({email:"User with email already exists"} );
+    } else {
+
+      const managerData = {
+        firstName : req.body.firstName,
+        lastName: req.body.lastName,
+        email: req.body.email,
+        password: req.body.password,
+        role: "Manager",
+      }         
+      
+      User.create(managerData).then(function(manager){
+
+      res.header("Access-Control-Allow-Origin", "http://localhost:3000"); // update to match the domain you will make the request from
+      res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+      res.header("Access-Control-Allow-Methods" , "POST, GET, OPTIONS");
+        
+
+      res.setHeader('Content-Type', 'application/json');
+      //res.status(200).send(JSON.stringify({success:"registerd successfully" , code : 'reg', user : user} ));
+      
+      //new verification token is created for the new user
+            var token = new Token({ _userId: manager._id, token: crypto.randomBytes(16).toString('hex') });
+            
+            //save the verification token
+            token.save(function (err) {
+              if (err) {
+                return res.status(500).send({ msg: err.message }); 
+              }
+
+              //send the email
+              var transporter = nodemailer.createTransport({ service: 'gmail', port: 25, secure: false , auth: { user: 'donotrep2ly921@gmail.com', pass: '0711920012' }, tls: { rejectUnauthorized: false } });                                          
+              var mailOptions = { from: 'donotrep2ly921@gmail.com', 
+                                  to: manager.email, 
+                                  subject: 'Manager Account Verification', 
+                                  text: 'Hello, \n\n' + 
+                                  'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/api\/confirmation\/' + token.token + '\/' +  manager.email + '\n' }; 
+              transporter.sendMail(mailOptions, function (err) {
+                if (err) { return res.status(500).send({ msg: err.message }); }
+                res.status(200).send('A verification email has been sent to ' + user.email + '.');
+              });
+            });
+    }).catch(next);
+  }
+});
+
+});
+
+//route to confirm email
+router.get('/confirmation/:token/:email', function (req, res, next){
+  
+  Token.findOne({ token: req.params.token }, function (err, token) {
+    if (!token) return res.status(400).send({ type: 'not-verified', msg: 'We were unable to find a valid token. Your token my have expired.' });
+
+    // If we found a token, find a matching user
+    User.findOne({ _id: token._userId, email: req.params.email }, function (err, user) {
+        if (!user) return res.status(400).send({ msg: 'We were unable to find a user for this token.' });
+        if (user.isVerified) return res.status(400).send({ type: 'already-verified', msg: 'This user has already been verified.' });
+        //if(user.role == "Manager") return res.redirect
+
+        // Verify and save the user
+        user.isVerified = true;
+        user.save(function (err) {
+            if (err) { return res.status(500).send({ msg: err.message }); }
+            res.status(200).send("The account has been verified. Please log in.");
+        });
+    });
+});
+});
+
 module.exports = router;
