@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/user');
-// const Product = require('../models/Product');
+const Product = require('../models/Product');
 const Review = require('../models/Review');
 const app = express();
 const mongoose = require("mongoose");
@@ -50,9 +50,9 @@ router.post('/signup',function(req,res,next){
 
     User.findOne({ email: req.body.email}). then(user =>{
       if(user) {
-        res.status(400).send({email:"User with email already exists"} );
+        res.send(JSON.stringify({errors:"User with email already exists" , code : 'reg_error'} ));
       } else {
-        
+       
         //encrypt password before saving in database
         bcrypt.genSalt(10, (err, salt) => {
           bcrypt.hash(req.body.password, salt, (err, hash) => {
@@ -68,7 +68,7 @@ router.post('/signup',function(req,res,next){
               
   
             res.setHeader('Content-Type', 'application/json');
-            res.status(200).send(JSON.stringify({success:"registerd successfully" , code : 'reg', user : user} ));
+            res.status(200).send(JSON.stringify({success:"A verification email has been sent to your email account" , code : 'reg', user : user} ));
             
             //new verification token is created for the new user
                   var token = new Token({ _userId: user._id, token: crypto.randomBytes(16).toString('hex') });
@@ -80,18 +80,20 @@ router.post('/signup',function(req,res,next){
                     }
   
                     //send the email
-                    var transporter = nodemailer.createTransport({ service: 'gmail', port: 25, secure: false , auth: { user: process.env.EMAIL, pass: process.env.PASSWORD }, tls: { rejectUnauthorized: false } });                                          
-                    var mailOptions = { from: process.env.EMAIL, to: user.email, subject: 'Account Verification Token', text: 'Hello, \n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/api\/confirmation\/' + token.token + '\/' +  user.email + '\n' }; 
+                    var transporter = nodemailer.createTransport({ service: 'gmail', port: 25, secure: false , auth: { user: 'donotrep2ly921@gmail.com', pass: '0711920012' }, tls: { rejectUnauthorized: false } });                                          
+                    var mailOptions = { from: 'donotrep2ly921@gmail.com', to: user.email, subject: 'Account Verification Token', text: 'Hello, \n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/api\/confirmation\/' + token.token + '\/' +  user.email + '\n' }; 
                     transporter.sendMail(mailOptions, function (err) {
                       if (err) { return res.status(500).send({ msg: err.message }); }
-                      res.status(200).send('A verification email has been sent to ' + user.email + '.');
+                      res.status(200).send(JSON.stringify({success:"A verification email has been sent to " + user.email , code : 'reg', user : user} ));
                     });
                   });
           })
         })
   
               
-      }).catch(next);
+      }).catch(function (err){
+        res.json(err);
+      });
     }
   });
   
@@ -160,7 +162,7 @@ router.post('/login',function(req,res,next){
     });
   
   
-  
+   
 router.get('/confirmation/:token/:email', function (req, res, next){
     
     Token.findOne({ token: req.params.token }, function (err, token) {
@@ -173,47 +175,140 @@ router.get('/confirmation/:token/:email', function (req, res, next){
   
           // Verify and save the user
           user.isVerified = true;
+          //redirect to login page
+          //var response = Response.redirect("http://localhost:3000/login", status);
           user.save(function (err) {
               if (err) { return res.status(500).send({ msg: err.message }); }
-              res.status(200).send("The account has been verified. Please log in.");
+              //res.status(200).send("The account has been verified. Please log in.");
+              res.status(200).redirect("http://localhost:3000/login");
+
           });
       });
   });
   });
 
+//route for managerLogin
+  router.post('/managerLogin',function(req,res,next){
+    
+    User.findOne({ email: req.body.email}, function(err, user) {
+
+   
+        if(user === null)
+        {
+           //res.send("User doesn't Exists");
+           //res.status(401).send(JSON.stringify({message:"User does not exist" , isValidLogin: true, } ));
+           res.send(JSON.stringify({message: "Manager does not exist",isValidLogin: false}));
+        }
+
+        else if (user.email === req.body.email ){
+
+          bcrypt.compare(req.body.password, user.password).then(isMatch => {
+            if(isMatch) {
+              //User matched
+              //res.status(401).send(JSON.stringify({message:"login successfully" , code : 'login', user : user} ));
+              // Create JWT Payload
+              const payload = {
+                id: user._id,
+                name: user.email,
+                role: user.role,
+              };
 
 
 
-router.post("/items1", function (req, res) {   // add an item
+              // Sign token
+              jwt.sign(
+                payload,
+                "secret",
+                {
+                  expiresIn: 86400 // 1 day
+                },
+                (err, token) => {
+                  // res.json({
+                  //   isValidLogin: true,
+                  //   token: "Bearer " + token,
+                  //   token1 : token
+                  // });
+                  res.send(JSON.stringify({message: "Manager found", isValidLogin: true, token : token}));
+                }
+              );
 
-    // console.log(req.file);
 
-    const product = new Products({
-
-        itemID: req.body.itemID,
-        name: req.body.name,
-        price: req.body.price,
-        description: req.body.description,
-        mainCategory: req.body.mainCategory,
-        subCategory: req.body.subCategory,
-        quantityInCart: req.body.quantityInCart,
-        cartIn: req.body.cartIn,
-        quantity: req.body.quantity
-
+            } 
+            
+            
+            else{
+             // res.status(400).send(JSON.stringify({message:"Invalid Password" , isValidLogin: false} ));
+              res.send(JSON.stringify({message: "Invalid Password",  isValidLogin: false}));
+            }
+          })
+            
+        }
 
     });
+  
+  });
 
-    product.save().then(function (dbProduct) {
+//route for adminLogin
+router.post('/adminLogin',function(req,res,next){
+    
+  User.findOne({ email: req.body.email}, function(err, user) {
 
-        res.json(dbProduct);
-    })
-        .catch(function (err) {
-            // If an error occurred, send it to the client
-            res.json(err);
-        });
+ 
+      if(user === null)
+      {
+         //res.send("User doesn't Exists");
+         //res.status(401).send(JSON.stringify({message:"User does not exist" , isValidLogin: true, } ));
+         res.send(JSON.stringify({message: "Admin does not exist",isValidLogin: false}));
+      }
 
+      else if (user.email === req.body.email ){
+
+        bcrypt.compare(req.body.password, user.password).then(isMatch => {
+          if(isMatch) {
+            //User matched
+            //res.status(401).send(JSON.stringify({message:"login successfully" , code : 'login', user : user} ));
+            // Create JWT Payload
+            const payload = {
+              id: user._id,
+              name: user.email,
+              role: user.role,
+            };
+
+
+
+            // Sign token
+            jwt.sign(
+              payload,
+              "secret",
+              {
+                expiresIn: 86400 // 1 day
+              },
+              (err, token) => {
+                // res.json({
+                //   isValidLogin: true,
+                //   token: "Bearer " + token,
+                //   token1 : token
+                // });
+                res.send(JSON.stringify({message: "Admin found", isValidLogin: true, token : token}));
+              }
+            );
+
+
+          } 
+          
+          
+          else{
+           // res.status(400).send(JSON.stringify({message:"Invalid Password" , isValidLogin: false} ));
+            res.send(JSON.stringify({message: "Invalid Password",  isValidLogin: false}));
+          }
+        })
+          
+      }
+
+  });
 
 });
+
 
 router.get('/allitems', async (req, res, next) => {
     try {
@@ -617,45 +712,657 @@ router.get('/getCart/:id',async (req,res)=>{
 
 router.post("/items", upload.array('productImage', 4) , (req, res) => {   // add an item
 
-  const reqFiles = [];
-  const url = req.protocol + '://' + req.get('host') + '/'
-  for (var i = 0; i < req.files.length; i++) {
-    reqFiles.push(url + req.files[i].path)
-  }
-    //image upload
-    console.log("file",reqFiles);
-
-    const product = {
-      name : req.body.title,
-      description: req.body.description,
-      mainCategory: req.body.category,
-      subCategory: req.body.subCategory,
-      price: req.body.price,
-      discount: req.body.discount,
-      quantity: req.body.quantity,
-      images: reqFiles,
+  let productImage = "";
+  /*for (var i = 0; i < req.files.length; i++) {
+    const url = req.files[i].originalname
+    const fileName = new Date().toISOString().replace(/:/g, '-') + '-' + url;
+    console.log(fileName)
+    productImage.push(fileName)
+  }*/
+  const url = req.files[0].originalname
+    const fileName = new Date().toISOString().replace(/:/g, '-') + '-' + url;
+    console.log(fileName)
+    productImage = fileName
+  //const size = req.body.size;
+  //const qty = req.body.color;
+  //const url = req.protocol + '://' + req.get('host') + '/'
+  const product = {
+    name : req.body.title,
+    description: req.body.description,
+    mainCategory: req.body.category,
+    subCategory: req.body.subCategory,
+    price: req.body.price,
+    discount: req.body.discount,
+    quantity:{
+      sQuantity :{
+        red : req.body.sRed,
+        black : req.body.sBlack,
+        white : req.body.sWhite,
+        green : req.body.sGreen,
+        pink : req.body.sPink,
+        blue : req.body.sBlue,
+        multi : req.body.sMulti,
+      },
+      mQuantity:{
+        red : req.body.mRed,
+        black : req.body.mBlack,
+        white : req.body.mWhite,
+        green : req.body.mGreen,
+        pink : req.body.mPink,
+        blue : req.body.mBlue,
+        multi : req.body.mMulti,
+      },
+      lQuantity:{
+        red : req.body.lRed,
+        black : req.body.lBlack,
+        white : req.body.lWhite,
+        green : req.body.lGreen,
+        pink : req.body.lPink,
+        blue : req.body.lBlue,
+        multi : req.body.lMulti,
+      },
+      xlQuantity:{
+        red : req.body.xlRed,
+        black : req.body.xlBlack,
+        white : req.body.xlWhite,
+        green : req.body.xlGreen,
+        pink : req.body.xlPink,
+        blue : req.body.xlBlue,
+        multi : req.body.xlMulti,
+      }
+  },
+  images :[
+    {
+     productImage : productImage
     }
+   
+   ],
+  }
+  
 
-    console.log(product);
+ 
+    //image upload
+    console.log("file",req.body.title);
+  
+
+  //function add(product) {
+  //  console.log(product);
     Product.create(product)
-      .then(function(products) {
-       
-        res.json(products);
-      })
-      .catch(function(err) {
-        // If an error occurred, send it to the client
-        res.json(err);
-      });
-});
+    .then(function(products) {
+      
+      res.status(200).send(JSON.stringify({success:"Item has been addedd successfully" , code : 'item', user : products} ));
 
+    })
+    .catch(function(err) {
+      // If an error occurred, send it to the client
+      res.json(err);
+    });
+  //}
+
+
+    /*switch (size) {
+      //if size is small
+      case 'sQuantity':
+        switch (color) {
+          case 'red': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                sQuantity:{
+                    red : req.body.quantity
+                  }
+                },
+              images:
+                  reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'black': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                sQuantity:{
+                    black : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'white': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                sQuantity:{
+                    white : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'green': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                sQuantity:{
+                    green : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'pink': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                sQuantity:{
+                    pink : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'blue': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                sQuantity:{
+                    blue : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'multi': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                sQuantity:{
+                    multi : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+        }
+        break;
+        //if size is medium
+        case 'mQuantity':
+        switch (color) {
+          case 'red': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                mQuantity:{
+                    red : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'black': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                mQuantity:{
+                    black : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'white': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                mQuantity:{
+                    white : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'green': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                mQuantity:{
+                    green : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'pink': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                mQuantity:{
+                    pink : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'blue': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                mQuantity:{
+                    blue : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'multi': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                mQuantity:{
+                    multi : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+        }
+        break;
+    
+        //if size is large
+        case 'lQuantity':
+        switch (color) {
+          case 'red': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                lQuantity:{
+                    red : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'black': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                lQuantity:{
+                    black : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'white': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                lQuantity:{
+                    white : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'green': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                lQuantity:{
+                    green : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'pink': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                lQuantity:{
+                    pink : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'blue': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                lQuantity:{
+                    blue : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'multi': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                lQuantity:{
+                    multi : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+        }
+        break;
+
+        //if size is extra large
+        case 'xlQuantity':
+        switch (color) {
+          case 'red': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                xlQuantity:{
+                    red : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'black': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                xlQuantity:{
+                    black : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'white': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                xlQuantity:{
+                    white : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'green': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                xlQuantity:{
+                    green : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'pink': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                xlQuantity:{
+                    pink : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'blue': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                xlQuantity:{
+                    blue : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+
+          case 'multi': {
+            const product = {
+              name : req.body.title,
+              description: req.body.description,
+              mainCategory: req.body.category,
+              subCategory: req.body.subCategory,
+              price: req.body.price,
+              discount: req.body.discount,
+              quantity:{
+                xlQuantity:{
+                    multi : req.body.quantity
+                  }
+                },
+              images: reqFiles,
+            }
+            add(product);
+            break;
+          }
+        }
+        break;     
+    }*/
+  
+});
 
 router.post('/signupManager',function(req,res,next){
   
   console.log(req.body);
 
-  User.findOne({ email: req.body.email}). then(manager =>{
+  User.findOne({ email: req.body.email}). then(manager => {
     if(manager) {
-      res.status(400).send({email:"User with email already exists"} );
+      res.send({message:"User with email already exists", code: "error"} );
     } else {
 
       const managerData = {
@@ -691,13 +1398,16 @@ router.post('/signupManager',function(req,res,next){
                                   to: manager.email, 
                                   subject: 'Manager Account Verification', 
                                   text: 'Hello, \n\n' + 
-                                  'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/api\/confirmation\/' + token.token + '\/' +  manager.email + '\n' }; 
+                                  'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/api\/confirmation\/' + token.token + '\/' +  manager.email + '\n' +
+                                  'Password: ' + manager.password + '/n' + 'Use the above password to login with your email address. We reccomend changing the password after login.' }; 
               transporter.sendMail(mailOptions, function (err) {
                 if (err) { return res.status(500).send({ msg: err.message }); }
-                res.status(200).send('A verification email has been sent to ' + user.email + '.');
+                res.status(200).send({message: 'A verification email has been sent to ' + manager.email + '.', code: "success"});
               });
             });
-    }).catch(next);
+    }).catch(function (err){
+      res.json(err);
+    });
   }
 });
 
