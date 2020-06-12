@@ -689,6 +689,7 @@ router.post("/items", upload.array('productImage', 4) , (req, res) => {   // add
   //const qty = req.body.color;
   //const url = req.protocol + '://' + req.get('host') + '/'
   const product = {
+    itemID : req.body.itemId,
     name : req.body.title,
     description: req.body.description,
     mainCategory: req.body.category,
