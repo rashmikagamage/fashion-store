@@ -17,6 +17,9 @@ const Token = require('../models/Token');
 require('dotenv').config();
 app.use(bodyParser.json());
 
+//image id date fix
+const imageId = new Date().toISOString().replace(/:/g, '-');
+
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, './uploads/');
@@ -26,7 +29,7 @@ const storage = multer.diskStorage({
     // }
     filename: function (req, file, cb) {
         //cb(null, Date.now() + file.originalname);
-        cb(null, new Date().toISOString().replace(/:/g, '-') + '-' + file.originalname);
+        cb(null, imageId + '-' + file.originalname);
     }
 });
 
@@ -682,7 +685,7 @@ router.post("/items", upload.array('productImage', 4) , (req, res) => {   // add
     productImage.push(fileName)
   }*/
   const url = req.files[0].originalname
-    const fileName = new Date().toISOString().replace(/:/g, '-') + '-' + url;
+    const fileName = imageId + '-' + url;
     console.log(fileName)
     productImage = fileName
   //const size = req.body.size;
