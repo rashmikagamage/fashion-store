@@ -590,34 +590,23 @@ router.post("/addItemToWishList/:id", async (req, res) => {   // add a items for
 router.post("/addItemWishListFromCart/:id", async (req, res) => {   // add a items for wishlist
 
     try {
-
-
         const itemAdd = req.body;
-
         const response = await User.findOneAndUpdate({_id: req.params.id}, {$push: {cart: itemAdd}}, {new: true});
-       
-
         res.send(JSON.stringify({message: "add item successfully to cart", wishlist: response.cart}));
 
     } catch (e) {
         console.log(e);
     }
-
 });
 
 router.get('/getWishList/:id', async (req, res, next) => {  // get user wishlist
     try {
-
         const response = await User.findOne({_id: req.params.id});
-
         let total=0;
-
         for (let item of response.wishlist) {
             total = total + item.price;
         }
-
         res.send(JSON.stringify({message: "wishlist details", wishlist: response.wishlist,total:total}));
-
     } catch (e) {
 
         next(e)
@@ -626,13 +615,9 @@ router.get('/getWishList/:id', async (req, res, next) => {  // get user wishlist
 
 router.post('/deleteWishListProduct', async (req, res, next) => { // delete item from wishlist
     try {
-
         const response = await User.findOne({_id: req.body.userId});
-
         const responses = await User.updateOne({_id: req.body.userId}, {'$pull': {'wishlist': {'_id': req.body.wishListOredrId}}}, {multi: true});
-
         res.send(JSON.stringify({message: "deleted successfully", wishlist: responses}));
-
     } catch (e) {
 
         next(e)
@@ -667,12 +652,6 @@ router.get('/getCategoriesToNav',async (req,res)=>{
     }
 
 });
-router.get('/getCart/:id',async (req,res)=>{
-
-    const response = await User.findOne({_id: req.params.id});
-    return res.json(response);
-
-})
 
 
 router.post("/items", upload.array('productImage', 4) , (req, res) => {   // add an item
@@ -836,6 +815,61 @@ router.patch('/updateProductDiscount/:_id',async (req,res)=>{
     }catch (e) {
         console.log(e);
 
+    }
+})
+
+router.post('/addItemToCart/:id',async (req,res)=>{
+
+    const product = new Products({
+        id : req.body.itemID,
+        itemName: req.body.itemName,
+        discount: req.body.discount,
+        color : req.body.selectedColor,
+        size : req.body.selectedSize,
+        images : []
+    })
+
+
+    try {
+
+        const response = await User.update(
+            {"_id" : req.params.id},
+            {
+                $push:{
+                    cart:req.body.data
+                }
+            })
+
+    }catch (e) {
+        console.log(e)
+    }
+})
+
+router.get('/getCart/:id',async (req,res)=>{
+    try {
+        const response = await User.find({_id:req.params.id});
+        return res.json(response);
+    }catch (e) {
+        console.log(e)
+    }
+
+})
+/*router.get('/getCart/:id',async (req,res)=>{
+
+    const response = await User.findOne({_id: req.params.id});
+    return res.json(response);
+
+})*/
+
+router.patch('/deleteCart/:id',async (req,res)=>{
+
+    try {
+        const response = await User.update({_id:req.params.id},{
+            $pull : {'cart':{uuid:req.body.uuid}}
+        })
+        return res.json(response.data);
+    }catch (e) {
+        console.log(e)
     }
 
 })

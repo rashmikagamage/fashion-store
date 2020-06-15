@@ -24,13 +24,20 @@ const UserSchema = new Schema({
         }],
   
 
-    cart: [{
-            id : {type: String},
+    cart: [/*{
+            id : {type: Number},
             itemName: {type: String},
             price : {type: Number},
-            quantity : {type : Number},
+            discount : {type:Number},
+            images :[
+                {
+                    productImage : {type:String}
+                }
+            ],
+            color : {type:String},
+            size : {type:String}
            
-        }],
+        }*/],
 
 });
 

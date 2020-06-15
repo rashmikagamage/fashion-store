@@ -37,7 +37,12 @@ const ProductSchema = new Schema({
   cartIn:{
       type : Boolean,
   },
-  
+  color: {
+      type:String,
+  },
+    size:{
+      type:String,
+    },
   ratings: [{
     userName: {type: String},
     rate : {type: Number},
