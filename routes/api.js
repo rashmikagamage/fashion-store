@@ -65,9 +65,9 @@ router.post('/signup',function(req,res,next){
             User.create(req.body).then(function(user){
               
   
-            res.header("Access-Control-Allow-Origin", "http://localhost:3000"); // update to match the domain you will make the request from
-            res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-            res.header("Access-Control-Allow-Methods" , "POST, GET, OPTIONS");
+          //  res.header("Access-Control-Allow-Origin", "http://localhost:3000"); // update to match the domain you will make the request from
+          //  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+          //  res.header("Access-Control-Allow-Methods" , "POST, GET, OPTIONS");
               
   
             res.setHeader('Content-Type', 'application/json');
@@ -83,8 +83,8 @@ router.post('/signup',function(req,res,next){
                     }
   
                     //send the email
-                    var transporter = nodemailer.createTransport({ service: 'gmail', port: 25, secure: false , auth: { user: 'donotrep2ly921@gmail.com', pass: '0711920012' }, tls: { rejectUnauthorized: false } });                                          
-                    var mailOptions = { from: 'donotrep2ly921@gmail.com', to: user.email, subject: 'Account Verification Token', text: 'Hello, \n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/api\/confirmation\/' + token.token + '\/' +  user.email + '\n' }; 
+                    var transporter = nodemailer.createTransport({ service: 'gmail', port: 25, secure: false , auth: { user: process.env.EMAIL, pass: process.env.PASSWORD }, tls: { rejectUnauthorized: false } });                                          
+                    var mailOptions = { from: process.env.EMAIL, to: user.email, subject: 'Account Verification Token', text: 'Hello, \n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/api\/confirmation\/' + token.token + '\/' +  user.email + '\n' }; 
                     transporter.sendMail(mailOptions, function (err) {
                       if (err) { return res.status(500).send({ msg: err.message }); }
                       res.status(200).send(JSON.stringify({success:"A verification email has been sent to " + user.email , code : 'reg', user : user} ));
@@ -193,8 +193,10 @@ router.get('/confirmation/:token/:email', function (req, res, next){
 //route for managerLogin
   router.post('/managerLogin',function(req,res,next){
     
+    console.log('req body',req.body);
     User.findOne({ email: req.body.email}, function(err, user) {
 
+      console.log('user',user);
    
         if(user === null)
         {
@@ -774,8 +776,8 @@ router.post('/signupManager',function(req,res,next){
               }
 
               //send the email
-              var transporter = nodemailer.createTransport({ service: 'gmail', port: 25, secure: false , auth: { user: 'donotrep2ly921@gmail.com', pass: '0711920012' }, tls: { rejectUnauthorized: false } });                                          
-              var mailOptions = { from: 'donotrep2ly921@gmail.com', 
+              var transporter = nodemailer.createTransport({ service: 'gmail', port: 25, secure: false , auth: { user: 'hasithakeshana9900@gmail.com', pass: '9812sliit' }, tls: { rejectUnauthorized: false } });                                          
+              var mailOptions = { from: 'hasithakeshana9900@gmail.com', 
                                   to: manager.email, 
                                   subject: 'Manager Account Verification', 
                                   text: 'Hello, \n\n' + 
@@ -872,6 +874,136 @@ router.patch('/deleteCart/:id',async (req,res)=>{
         console.log(e)
     }
 
-})
+});
+
+
+
+router.post('/SMReg',function(req,res,next){
+
+  console.log(req.body);
+
+    User.findOne({ email: req.body.email}). then(user =>{
+      if(user) {
+        res.send(JSON.stringify({errors:"User with email already exists" , code : 'reg_error'} ));
+      } else {
+       
+        //encrypt password before saving in database
+        bcrypt.genSalt(10, (err, salt) => {
+          bcrypt.hash(req.body.password, salt, (err, hash) => {
+            if (err) throw err;
+            req.body.password = hash;
+
+            const managerData = {
+              firstName : req.body.firstName,
+              lastName: req.body.lastName,
+              email: req.body.email,
+              password: req.body.password,
+              role: "Manager",
+            }  
+            
+            User.create(managerData).then(function(user){
+              
+  
+          //  res.header("Access-Control-Allow-Origin", "http://localhost:3000"); // update to match the domain you will make the request from
+           // res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+          //  res.header("Access-Control-Allow-Methods" , "POST, GET, OPTIONS");
+              
+  
+            res.setHeader('Content-Type', 'application/json');
+            res.status(200).send(JSON.stringify({success:"A verification email has been sent to your email account" , code : 'reg', user : user} ));
+            
+            //new verification token is created for the new user
+                  var token = new Token({ _userId: user._id, token: crypto.randomBytes(16).toString('hex') });
+                  
+                  //save the verification token
+                  token.save(function (err) {
+                    if (err) {
+                      return res.status(500).send({ msg: err.message }); 
+                    }
+  
+                    //send the email
+                    var transporter = nodemailer.createTransport({ service: 'gmail', port: 25, secure: false , auth: { user: process.env.EMAIL, pass: process.env.PASSWORD }, tls: { rejectUnauthorized: false } });                                          
+                    var mailOptions = { from: process.env.EMAIL, to: user.email, subject: 'Account Verification Token', text: 'Hello, \n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/api\/confirmation\/' + token.token + '\/' +  user.email + '\n' }; 
+                    transporter.sendMail(mailOptions, function (err) {
+                      if (err) { return res.status(500).send({ msg: err.message }); }
+                      res.status(200).send(JSON.stringify({success:"A verification email has been sent to " + user.email , code : 'reg', user : user} ));
+                    });
+                  });
+          })
+        })
+  
+              
+      }).catch(function (err){
+        res.json(err);
+      });
+    }
+  });
+  
+  });
+
+
+  router.post('/AdminReg',function(req,res,next){
+
+    console.log(req.body);
+  
+      User.findOne({ email: req.body.email}). then(user =>{
+        if(user) {
+          res.send(JSON.stringify({errors:"User with email already exists" , code : 'reg_error'} ));
+        } else {
+         
+          //encrypt password before saving in database
+          bcrypt.genSalt(10, (err, salt) => {
+            bcrypt.hash(req.body.password, salt, (err, hash) => {
+              if (err) throw err;
+              req.body.password = hash;
+  
+              const AdminData = {
+                firstName : req.body.firstName,
+                lastName: req.body.lastName,
+                email: req.body.email,
+                password: req.body.password,
+                role: "Admin",
+              }  
+              
+              User.create(AdminData).then(function(user){
+                
+    
+             // res.header("Access-Control-Allow-Origin", "http://localhost:3000"); // update to match the domain you will make the request from
+            //  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+            //  res.header("Access-Control-Allow-Methods" , "POST, GET, OPTIONS");
+                
+    
+              res.setHeader('Content-Type', 'application/json');
+              res.status(200).send(JSON.stringify({success:"A verification email has been sent to your email account" , code : 'reg', user : user} ));
+              
+              //new verification token is created for the new user
+                    var token = new Token({ _userId: user._id, token: crypto.randomBytes(16).toString('hex') });
+                    
+                    //save the verification token
+                    token.save(function (err) {
+                      if (err) {
+                        return res.status(500).send({ msg: err.message }); 
+                      }
+    
+                      //send the email
+                      var transporter = nodemailer.createTransport({ service: 'gmail', port: 25, secure: false , auth: { user: process.env.EMAIL, pass: process.env.EMAIL }, tls: { rejectUnauthorized: false } });                                          
+                      var mailOptions = { from: process.env.EMAIL, to: user.email, subject: 'Account Verification Token', text: 'Hello, \n\n' + 'Please verify your account by clicking the link: \nhttp:\/\/' + req.headers.host + '\/api\/confirmation\/' + token.token + '\/' +  user.email + '\n' }; 
+                      transporter.sendMail(mailOptions, function (err) {
+                        if (err) { return res.status(500).send({ msg: err.message }); }
+                        res.status(200).send(JSON.stringify({success:"A verification email has been sent to " + user.email , code : 'reg', user : user} ));
+                      });
+                    });
+            })
+          })
+    
+                
+        }).catch(function (err){
+          res.json(err);
+        });
+      }
+    });
+    
+    });
+  
 
 module.exports = router;
