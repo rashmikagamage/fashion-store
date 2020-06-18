@@ -626,24 +626,37 @@ router.post('/deleteWishListProduct', async (req, res, next) => { // delete item
     }
 });
 
-router.post('/addCategories',async (req,res)=>{
+router.post('/addCategories',async (req,res)=> {
+
 
     const category = new Categories({
-        menCategories:req.body.menCategories,
-        womenCategories:req.body.womenCategories,
-        kidsCategories  : req.body.kidsCategories,
-        sportsCategories : req.body.sportsCategories,
+        menCategories: req.body.menCategories,
+        womenCategories: req.body.womenCategories,
+        kidsCategories: req.body.kidsCategories,
+        sportsCategories: req.body.sportsCategories,
     });
     try {
-            const savedCategory = await category.save();
-           res.json(savedCategory);
-    }catch (e) {
+        const savedCategory = await category.save();
+        res.json(savedCategory);
+    } catch (e) {
         console.log(e)
     }
+});
 
-
+router.post('/addCategories',async (req,res)=>{
+    const category = req.body.category;
+    let subCategory = req.body.subCategory;
+    Categories.updateOne(
+        {$addToSet: { [category] : [subCategory] } },
+        function(err, result) {
+            if(err) {
+                res.send(err);
+            } else{
+                res.send(result);
+            }
+        }
+    )
 })
-
 router.get('/getCategoriesToNav',async (req,res)=>{
 
     try {
