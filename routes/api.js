@@ -627,8 +627,10 @@ router.post('/deleteWishListProduct', async (req, res, next) => { // delete item
 });
 
 router.post('/addCategories',async (req,res)=>{
+  const category = req.body.category;
+  let subCategory = req.body.subCategory;
     Categories.updateOne(
-      {$addToSet: { menCategories : [req.body.menCategories], womenCategories : [req.body.womenCategories], kidsCategories : [req.body.kidsCategories], sportsCategories : [req.body.sportsCategories], discountCategories : [req.body.discountCategories] } },
+      {$addToSet: { [category] : [subCategory] } },
       function(err, result) {
         if(err) {
           res.send(err);
