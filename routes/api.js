@@ -627,6 +627,7 @@ router.post('/deleteWishListProduct', async (req, res, next) => { // delete item
 });
 
 router.post('/addCategories',async (req,res)=>{
+
     const category = new Categories({
         menCategories:req.body.menCategories,
         womenCategories:req.body.womenCategories,
