@@ -626,22 +626,6 @@ router.post('/deleteWishListProduct', async (req, res, next) => { // delete item
     }
 });
 
-router.post('/addCategories',async (req,res)=> {
-
-
-    const category = new Categories({
-        menCategories: req.body.menCategories,
-        womenCategories: req.body.womenCategories,
-        kidsCategories: req.body.kidsCategories,
-        sportsCategories: req.body.sportsCategories,
-    });
-    try {
-        const savedCategory = await category.save();
-        res.json(savedCategory);
-    } catch (e) {
-        console.log(e)
-    }
-});
 
 router.post('/addCategories',async (req,res)=>{
     const category = req.body.category;
