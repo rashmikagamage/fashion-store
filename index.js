@@ -29,7 +29,7 @@ const uri =
 
 
 mongoose.connect(
-	uri,
+	process.env.MONGODB_URI || uri,
 	{ useUnifiedTopology: true, useFindAndModify: false },
 	() => {
 		console.log("DB connected");
